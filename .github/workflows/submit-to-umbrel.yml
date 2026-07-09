@@ -198,15 +198,22 @@ jobs:
           commit-message: "larapaper: update to ${{ steps.ver.outputs.target }}"
           title: "larapaper: update to ${{ steps.ver.outputs.target }}"
           body: |
-            Updates the `larapaper` package to LaraPaper **${{ steps.ver.outputs.target }}**.
+            Updates the `larapaper` package: **${{ steps.published.outputs.current }} → ${{ steps.ver.outputs.target }}**.
 
             - Image: `${{ env.IMAGE }}:${{ steps.ver.outputs.target }}`
             - Digest (multi-arch index, `linux/amd64` + `linux/arm64`): `${{ steps.digest.outputs.digest }}`
-            - Upstream release: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${{ steps.ver.outputs.target }}
+            - Upstream release notes: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${{ steps.ver.outputs.target }}
 
-            Testing: packaging is version/digest-only over a package previously
-            verified on Umbrel (fresh install + update path + device polling over
-            `/api/*` and `/storage/*` + SQLite persistence). Opened automatically
-            by the LaraPaper packaging repo's release watcher.
+            **Automated version + digest bump** opened by the LaraPaper packaging
+            repo's release watcher. It changes only the manifest `version`, the
+            pinned image tag/digest, and `releaseNotes` — no compose, exports,
+            hooks, `app_proxy`, permissions, or persistence changes.
+
+            **Testing:** the package structure (fresh install, `app_proxy` device
+            polling over `/api/*` and `/storage/*`, SQLite persistence) was
+            runtime-verified on a real Umbrel device (`linux/amd64`) at the
+            baseline version. This individual version bump was **not** runtime-tested
+            — a maintainer should confirm the update path on their instance before
+            merge. No generated secrets or private data are included.
 
             Developer: [usetrmnl/larapaper](https://github.com/usetrmnl/larapaper) · packaging by arquiguru.
