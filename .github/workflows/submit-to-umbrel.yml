@@ -157,6 +157,7 @@ jobs:
         env:
           T: ${{ steps.ver.outputs.target }}
           D: ${{ steps.digest.outputs.digest }}
+          C: ${{ steps.published.outputs.current }}
         run: |
           set -euo pipefail
           DEST="upstream/${APP_ID}"
@@ -171,7 +172,13 @@ jobs:
           fi
           MAN="${DEST}/umbrel-app.yml"
           yq -i ".version = \"${T}\"" "${MAN}"
-          yq -i ".releaseNotes = \"Packages LaraPaper ${T}. Upstream release notes: https://github.com/${UPSTREAM_REPO}/releases/tag/${T}\"" "${MAN}"
+          # Umbrel convention: releaseNotes is empty for a NEW package's first
+          # submission, and describes the change on subsequent updates.
+          if [ "${C}" = "none" ]; then
+            yq -i '.releaseNotes = ""' "${MAN}"
+          else
+            yq -i ".releaseNotes = \"Packages LaraPaper ${T}. Upstream release notes: https://github.com/${UPSTREAM_REPO}/releases/tag/${T}\"" "${MAN}"
+          fi
           yq -i ".services.server.image = \"${IMAGE}:${T}@${D}\"" "${DEST}/docker-compose.yml"
 
           echo "----- resulting diff -----"
