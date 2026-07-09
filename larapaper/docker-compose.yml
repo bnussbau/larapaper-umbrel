@@ -3,10 +3,13 @@ services:
     environment:
       APP_HOST: larapaper_server_1
       APP_PORT: 8080
-      # LaraPaper exposes a device API (e-ink devices poll it without a browser
-      # session). Whitelist the API paths so the Umbrel auth proxy does not block
-      # the devices. Mirrors the upstream maintainer's Umbrel package.
-      PROXY_AUTH_WHITELIST: "/api/*"
+      # E-ink devices poll LaraPaper without a browser session: they hit the
+      # device API under /api AND fetch the rendered screen PNGs under /storage.
+      # Whitelist BOTH so the Umbrel auth proxy does not block them. Without
+      # /storage/*, a device can poll /api/display but the image URL it returns
+      # 302-redirects to the Umbrel login page and the screen renders blank
+      # (confirmed on a real e-ink device).
+      PROXY_AUTH_WHITELIST: "/api/*,/storage/*"
 
   server:
     # Multi-arch image. The digest below is the OCI image-index digest for tag

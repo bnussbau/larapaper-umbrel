@@ -95,8 +95,9 @@ this repo's own pin kept fresh.
   instead of the image's shared baked-in one. Stable = SQLite encrypted columns and signed
   cookies keep working across restarts/updates; unique = no two installs share a signing
   key. Zero first-run CLI. Full rationale in [`docs/NOTES.md`](docs/NOTES.md).
-- **`PROXY_AUTH_WHITELIST: "/api/*"`** on `app_proxy` — e-ink devices poll the API with no
-  browser session, so `/api/*` must bypass Umbrel's auth proxy.
+- **`PROXY_AUTH_WHITELIST: "/api/*,/storage/*"`** on `app_proxy` — e-ink devices poll with no
+  browser session, so both the device API (`/api/*`) and the rendered screen PNGs (`/storage/*`)
+  must bypass Umbrel's auth proxy. Omitting `/storage/*` leaves the device screen blank.
 - **No `APP_URL`** — LaraPaper builds asset URLs from the request Host header, which the
   Umbrel proxy forwards, so CSS/JS resolve correctly without pinning an absolute URL.
 - **Volumes** — SQLite DB (`data/database`) and generated screen PNGs (`data/generated`).

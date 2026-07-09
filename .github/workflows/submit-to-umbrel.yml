@@ -97,7 +97,7 @@ jobs:
           esac
           RAW="$(docker buildx imagetools inspect "${IMAGE}:${T}" --raw)"
           for arch in amd64 arm64; do
-            printf '%s' "${RAW}" | grep -q "\"architecture\":\"${arch}\"" \
+            printf '%s' "${RAW}" | grep -Eq "\"architecture\":[[:space:]]*\"${arch}\"" \
               || { echo "::error::Image ${IMAGE}:${T} is missing linux/${arch}"; exit 1; }
           done
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
@@ -198,8 +198,8 @@ jobs:
             - Upstream release: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${{ steps.ver.outputs.target }}
 
             Testing: packaging is version/digest-only over a package previously
-            verified on Umbrel (fresh install + update path + `/api/*` device
-            polling + SQLite persistence). Opened automatically by the LaraPaper
-            packaging repo's release watcher.
+            verified on Umbrel (fresh install + update path + device polling over
+            `/api/*` and `/storage/*` + SQLite persistence). Opened automatically
+            by the LaraPaper packaging repo's release watcher.
 
             Developer: [usetrmnl/larapaper](https://github.com/usetrmnl/larapaper) · packaging by arquiguru.

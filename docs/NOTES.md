@@ -65,8 +65,9 @@ If a feature ever needs fully-qualified absolute URLs (e.g. a device image URL),
 
 ## Other choices
 
-- **`PROXY_AUTH_WHITELIST: "/api/*"`** on `app_proxy`: e-ink devices poll the server over
-  HTTP with no browser login, so the device API must bypass Umbrel's auth proxy.
+- **`PROXY_AUTH_WHITELIST: "/api/*,/storage/*"`** on `app_proxy`: e-ink devices poll the server
+  over HTTP with no browser login, so both the device API (`/api/*`) and the rendered screen
+  PNGs (`/storage/*`) must bypass Umbrel's auth proxy — without `/storage/*` the screen goes blank.
 - **`hooks/pre-start`**: pre-creates and `chown`s the data dirs to `82:82` (www-data on the
   Alpine base). Without it the app can't create its SQLite DB on first boot. Idempotent, so
   it is also a safe update-time migration.
