@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# The upstream image runs PHP-FPM as user www-data (uid/gid 82 on the Alpine
+# base). Bind-mounted host dirs are created root-owned, so LaraPaper cannot
+# write the SQLite database or generated PNGs until we chown them. Umbrel runs
+# this hook before the container starts.
+DATA_DIR="$(readlink -f "$(dirname "${BASH_SOURCE[0]}")/..")/data"
+
+mkdir -p "${DATA_DIR}/database" "${DATA_DIR}/generated"
+chown -R 82:82 "${DATA_DIR}"

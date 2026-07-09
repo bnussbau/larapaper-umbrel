@@ -1,0 +1,49 @@
+services:
+  app_proxy:
+    environment:
+      APP_HOST: larapaper_server_1
+      APP_PORT: 8080
+      # LaraPaper exposes a device API (e-ink devices poll it without a browser
+      # session). Whitelist the API paths so the Umbrel auth proxy does not block
+      # the devices. Mirrors the upstream maintainer's Umbrel package.
+      PROXY_AUTH_WHITELIST: "/api/*"
+
+  server:
+    # Multi-arch image. The digest below is the OCI image-index digest for tag
+    # 0.38.0 (covers linux/amd64 + linux/arm64), verified against ghcr.io on
+    # 2026-07-01. It is identical to the digest the upstream maintainer pins for
+    # the old image name ghcr.io/usetrmnl/byos_laravel:0.38.0 (larapaper is the
+    # renamed same image).
+    #
+    # To re-pin on a version bump:
+    #   docker buildx imagetools inspect ghcr.io/usetrmnl/larapaper:<tag>
+    image: ghcr.io/usetrmnl/larapaper:0.38.0@sha256:a19ea8bcb95898f7a35aba38cf9b1768c2a54df7026d346e8ced294f911a7b76
+    restart: on-failure
+    stop_grace_period: 1m
+    environment:
+      # --- APP_KEY (Laravel app secret) — per-install unique ---
+      # Overrides the image's shared baked-in .env.example key with a key that is
+      # UNIQUE to this Umbrel and STABLE across restarts/updates. The value is
+      # derived deterministically from the install's per-app Umbrel seed in
+      # exports.sh (APP_LARAPAPER_APP_KEY) and expands here. Because it is stable,
+      # LaraPaper's SQLite encrypted columns and signed session cookies keep
+      # decrypting; because it is per-install, no two Umbrels share a signing key.
+      # Still zero-touch (no first-run CLI). See NOTES.md + exports.sh.
+      - APP_KEY=${APP_LARAPAPER_APP_KEY}
+      #
+      # --- APP_URL ---
+      # Deliberately NOT set. Laravel defaults to http://localhost; LaraPaper's
+      # assets are served as root-relative paths, so the Umbrel app_proxy serves
+      # CSS/JS correctly without an absolute APP_URL. Setting a wrong absolute
+      # APP_URL is exactly what breaks asset/CSS URLs (the bug in our current
+      # Portainer DinD setup), so we leave it to the proxy. The upstream
+      # maintainer's Umbrel package also omits APP_URL. See NOTES.md.
+      - PHP_OPCACHE_ENABLE=1
+      - TRMNL_PROXY_REFRESH_MINUTES=15
+      - DB_DATABASE=database/storage/database.sqlite
+      - APP_TIMEZONE=${TZ:-Etc/UTC}
+    volumes:
+      # SQLite database directory
+      - ${APP_DATA_DIR}/data/database:/var/www/html/database/storage
+      # Generated screen PNGs the e-ink devices poll for
+      - ${APP_DATA_DIR}/data/generated:/var/www/html/storage/app/public/images/generated

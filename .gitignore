@@ -1,0 +1,16 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# Never commit secrets or tokens
+*.pat
+*.token
+.env
+.env.*
+
+# Local scratch / checkout used by the submit workflow
+/upstream/

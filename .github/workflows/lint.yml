@@ -1,0 +1,73 @@
+name: Validate package
+
+# Lightweight, self-contained checks that catch the mistakes that would fail the
+# getumbrel/umbrel-apps linter before a PR is ever opened. (The full Umbrel
+# linter lives in umbrel-apps and runs on the PR itself; this is a fast local
+# pre-flight so the auto-submitted PR arrives clean.)
+
+on:
+  push:
+    paths:
+      - "larapaper/**"
+      - ".github/workflows/**"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate umbrel-app.yml
+        run: |
+          set -euo pipefail
+          M=larapaper/umbrel-app.yml
+          # required fields present (mirrors umbrel-apps REQUIRED_MANIFEST_FIELDS)
+          for f in manifestVersion id category name version tagline description \
+                   developer website dependencies repo support port gallery path \
+                   submitter submission; do
+            yq -e "has(\"$f\")" "$M" >/dev/null || { echo "::error::missing manifest field: $f"; exit 1; }
+          done
+          test "$(yq -r '.id' "$M")" = "larapaper"
+          # category must be one Umbrel accepts
+          case "$(yq -r '.category' "$M")" in
+            ai|automation|bitcoin|crypto|developer|files|finance|media|networking|social) ;;
+            *) echo "::error::invalid category"; exit 1 ;;
+          esac
+          # gallery must be a list; empty is expected for a new official submission
+          yq -e '.gallery | tag == "!!seq"' "$M" >/dev/null || { echo "::error::gallery must be a list"; exit 1; }
+          # icon must be omitted for the official store (Umbrel hosts the icon)
+          if yq -e 'has("icon")' "$M" >/dev/null 2>&1; then
+            echo "::warning file=larapaper/umbrel-app.yml::omit \`icon\` for official-store submissions; Umbrel hosts the icon"
+          fi
+
+      - name: Validate docker-compose.yml
+        run: |
+          set -euo pipefail
+          C=larapaper/docker-compose.yml
+          IMG="$(yq -r '.services.server.image' "$C")"
+          echo "image: $IMG"
+          echo "$IMG" | grep -Eq '@sha256:[0-9a-f]{64}$' \
+            || { echo "::error::server image must be digest-pinned (…@sha256:<64 hex>)"; exit 1; }
+          yq -e '.services.app_proxy.environment.PROXY_AUTH_WHITELIST' "$C" >/dev/null \
+            || { echo "::error::app_proxy PROXY_AUTH_WHITELIST missing (device /api/* would be blocked)"; exit 1; }
+
+      - name: Validate hooks + exports (shell syntax + exec bits)
+        run: |
+          set -euo pipefail
+          test -x larapaper/hooks/pre-start || { echo "::error::hooks/pre-start not executable"; exit 1; }
+          test -x larapaper/exports.sh      || { echo "::error::exports.sh not executable"; exit 1; }
+          bash -n larapaper/hooks/pre-start
+          bash -n larapaper/exports.sh
+
+      - name: Check for stray App Store assets in the app folder
+        run: |
+          set -euo pipefail
+          # Umbrel's linter rejects icon/logo/gallery/screenshot images inside the
+          # app package — they belong in the PR body / Umbrel's asset pipeline.
+          if find larapaper -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \
+               -o -iname '*.webp' -o -iname '*.gif' -o -iname 'icon.svg' -o -iname 'logo.svg' \) \
+               | grep -q .; then
+            echo "::error::remove image/icon assets from larapaper/ (keep them in assets/ instead)"; exit 1
+          fi
