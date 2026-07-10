@@ -3,13 +3,27 @@ services:
     environment:
       APP_HOST: larapaper_server_1
       APP_PORT: 8080
-      # E-ink devices poll LaraPaper without a browser session: they hit the
-      # device API under /api AND fetch the rendered screen PNGs under /storage.
-      # Whitelist BOTH so the Umbrel auth proxy does not block them. Without
-      # /storage/*, a device can poll /api/display but the image URL it returns
-      # 302-redirects to the Umbrel login page and the screen renders blank
-      # (confirmed on a real e-ink device).
-      PROXY_AUTH_WHITELIST: "/api/*,/storage/*"
+      # E-ink devices and webhook publishers reach LaraPaper without a browser
+      # session, so those exact routes must bypass Umbrel's auth proxy. Whitelisted
+      # paths are public, so they are kept as narrow as the app allows. Bare paths
+      # match exactly; "/path/*" matches child paths only.
+      #
+      #   /api/setup,/api/display,/api/log,/api/current_screen
+      #       the device firmware protocol (device auth: Access-Token header)
+      #   /api/custom_plugins/*
+      #       webhook plugins, which external publishers POST to (auth: secret UUID)
+      #   /api/devices
+      #       the documented REST API used by scripts (auth: Sanctum bearer token)
+      #   /storage/images/*
+      #       the rendered screen PNGs the device fetches from image_url. Without
+      #       this the device polls fine but the image 302-redirects to the Umbrel
+      #       login page and the screen renders blank.
+      #
+      # Deliberately NOT whitelisted (they stay behind Umbrel auth): /api/user,
+      # /api/me, /api/plugin_settings/*, /api/device-models, /api/display/update.
+      # Verified on a real e-ink device: the device, its image fetch, webhooks and
+      # the token API all work; the management routes above return 302.
+      PROXY_AUTH_WHITELIST: "/api/setup,/api/display,/api/log,/api/current_screen,/api/custom_plugins/*,/api/devices,/storage/images/*"
 
   server:
     # Multi-arch image. The digest below is the OCI image-index digest for tag

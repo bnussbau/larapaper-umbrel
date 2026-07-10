@@ -228,9 +228,10 @@ jobs:
             hooks, `app_proxy`, permissions, or persistence changes.
 
             **Testing:** the package structure (fresh install, `app_proxy` device
-            polling over `/api/*` and `/storage/*`, SQLite persistence) was
-            runtime-verified on a real Umbrel device (`linux/amd64`) at the
-            baseline version. This individual version bump was **not** runtime-tested
+            polling over the whitelisted device/webhook routes, rendered image
+            fetch, SQLite persistence) was runtime-verified on a real Umbrel device
+            (`linux/amd64`) at the baseline version. This individual version bump
+            was **not** runtime-tested
             — a maintainer should confirm the update path on their instance before
             merge. No generated secrets or private data are included.
 

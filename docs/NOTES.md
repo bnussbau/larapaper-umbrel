@@ -65,9 +65,13 @@ If a feature ever needs fully-qualified absolute URLs (e.g. a device image URL),
 
 ## Other choices
 
-- **`PROXY_AUTH_WHITELIST: "/api/*,/storage/*"`** on `app_proxy`: e-ink devices poll the server
-  over HTTP with no browser login, so both the device API (`/api/*`) and the rendered screen
-  PNGs (`/storage/*`) must bypass Umbrel's auth proxy — without `/storage/*` the screen goes blank.
+- **A narrow `PROXY_AUTH_WHITELIST`** on `app_proxy`: only the exact routes devices and webhook
+  publishers reach without a browser session bypass Umbrel's auth — the firmware protocol
+  (`/api/setup`, `/api/display`, `/api/log`, `/api/current_screen`), webhooks (`/api/custom_plugins/*`),
+  the token REST API (`/api/devices`), and the rendered PNGs (`/storage/images/*`). Whitelisted
+  paths are public, so management routes (`/api/user`, `/api/me`, `/api/plugin_settings/*`,
+  `/api/display/update`) are deliberately left off. Umbrel's proxy matches bare paths exactly and
+  `"/path/*"` as child-only. Without `/storage/images/*` the device screen goes blank.
 - **`hooks/pre-start`**: pre-creates and `chown`s the data dirs to `82:82` (www-data on the
   Alpine base). Without it the app can't create its SQLite DB on first boot. Idempotent, so
   it is also a safe update-time migration.
