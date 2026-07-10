@@ -57,7 +57,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this packaging repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      # --- 0. Is auto-submit configured on this repo? ------------------------
+      # Opening a PR to getumbrel/umbrel-apps needs a fork + a PAT. Until the
+      # repo owner sets those up (see README), skip the PR steps and finish
+      # green with a notice, instead of failing the scheduled run every day.
+      - name: Check auto-submit configuration
+        id: cfg
+        env:
+          TOKEN: ${{ secrets.UMBREL_APPS_TOKEN }}
+          FORK: ${{ vars.FORK_OWNER }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TOKEN:-}" ] || [ -z "${FORK:-}" ]; then
+            echo "::notice::Auto-submit is not configured yet. Add the Actions secret UMBREL_APPS_TOKEN and the Actions variable FORK_OWNER (see README) to enable opening PRs to getumbrel/umbrel-apps. The release check below still runs; the PR steps are skipped."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
 
       # --- 1. Resolve the target LaraPaper version ---------------------------
       # Uses the latest NON-prerelease GitHub release, then hard-guards it to a
@@ -138,8 +156,8 @@ jobs:
 
       # --- 5. Check out the upstream store into ./upstream -------------------
       - name: Checkout getumbrel/umbrel-apps
-        if: steps.decide.outputs.update == 'true'
-        uses: actions/checkout@v4
+        if: steps.decide.outputs.update == 'true' && steps.cfg.outputs.configured == 'true'
+        uses: actions/checkout@v5
         with:
           repository: ${{ env.UMBREL_APPS }}
           ref: ${{ env.UMBREL_BASE }}
@@ -153,7 +171,7 @@ jobs:
       # Umbrel-curated fields — gallery, submission, icon — are preserved); on a
       # first submission we seed it from this repo's manifest.
       - name: Apply package changes
-        if: steps.decide.outputs.update == 'true'
+        if: steps.decide.outputs.update == 'true' && steps.cfg.outputs.configured == 'true'
         env:
           T: ${{ steps.ver.outputs.target }}
           D: ${{ steps.digest.outputs.digest }}
@@ -186,7 +204,7 @@ jobs:
 
       # --- 7. Open / update the cross-repo PR (fork -> upstream) -------------
       - name: Open or update PR to umbrel-apps
-        if: steps.decide.outputs.update == 'true'
+        if: steps.decide.outputs.update == 'true' && steps.cfg.outputs.configured == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.UMBREL_APPS_TOKEN }}

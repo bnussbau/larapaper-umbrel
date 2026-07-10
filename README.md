@@ -73,6 +73,10 @@ merged, the "already published" check stops it from re-opening.
 
 That is the entire setup. No secrets live in this repo.
 
+Until those two are set, the scheduled run **skips the PR steps and finishes green**
+with a notice (it still checks upstream for a new release), so you won't get a daily
+failure email before you've configured it.
+
 ### Manual submit
 
 Actions → **"Submit LaraPaper update to Umbrel App Store"** → **Run workflow**. Leave
