@@ -10,6 +10,14 @@ services:
       #
       #   /api/setup,/api/display,/api/log,/api/current_screen
       #       the device firmware protocol (device auth: Access-Token header)
+      #   /api/display/*
+      #       admits the alias preview render, /api/display/{uuid}/alias (auth:
+      #       per-plugin secret UUID), which cookie-less BYOS tooling fetches to
+      #       preview a plugin's rendered screen. The proxy matcher only supports
+      #       a trailing *, so this child glob is the narrowest expression; the
+      #       two Sanctum management children it would also admit are pushed back
+      #       behind Umbrel auth by the PROXY_AUTH_BLACKLIST below (blacklist
+      #       wins over whitelist in app_proxy).
       #   /api/custom_plugins/*
       #       webhook plugins, which external publishers POST to (auth: secret UUID)
       #   /api/devices
@@ -19,11 +27,13 @@ services:
       #       this the device polls fine but the image 302-redirects to the Umbrel
       #       login page and the screen renders blank.
       #
-      # Deliberately NOT whitelisted (they stay behind Umbrel auth): /api/user,
-      # /api/me, /api/plugin_settings/*, /api/device-models, /api/display/update.
-      # Verified on a real e-ink device: the device, its image fetch, webhooks and
-      # the token API all work; the management routes above return 302.
-      PROXY_AUTH_WHITELIST: "/api/setup,/api/display,/api/log,/api/current_screen,/api/custom_plugins/*,/api/devices,/storage/images/*"
+      # Deliberately NOT public (they stay behind Umbrel auth): /api/user,
+      # /api/me, /api/plugin_settings/*, /api/device-models, /api/display/status,
+      # /api/display/update. Verified on a real e-ink device: the device, its
+      # image fetch, webhooks, the token API and the alias preview all work; the
+      # management routes above return 302.
+      PROXY_AUTH_WHITELIST: "/api/setup,/api/display,/api/display/*,/api/log,/api/current_screen,/api/custom_plugins/*,/api/devices,/storage/images/*"
+      PROXY_AUTH_BLACKLIST: "/api/display/status,/api/display/update"
 
   server:
     # Multi-arch image. The digest below is the OCI image-index digest for tag

@@ -102,10 +102,12 @@ this repo's own pin kept fresh.
 - **A narrow `PROXY_AUTH_WHITELIST`** on `app_proxy` — devices and webhook publishers reach
   LaraPaper without a browser session, so only those exact routes bypass Umbrel's auth proxy:
   the device firmware protocol (`/api/setup`, `/api/display`, `/api/log`, `/api/current_screen`),
-  webhook plugins (`/api/custom_plugins/*`), the token-authenticated REST API (`/api/devices`),
+  the uuid-gated alias preview render (`/api/display/*`, used by BYOS tooling), webhook
+  plugins (`/api/custom_plugins/*`), the token-authenticated REST API (`/api/devices`),
   and the rendered screen PNGs (`/storage/images/*`). Management routes such as `/api/user`,
-  `/api/me`, `/api/plugin_settings/*` and `/api/display/update` stay behind Umbrel auth.
-  Omitting `/storage/images/*` leaves the device screen blank.
+  `/api/me`, `/api/plugin_settings/*`, `/api/display/status` and `/api/display/update` stay
+  behind Umbrel auth (the latter two via `PROXY_AUTH_BLACKLIST`, which overrides the
+  `/api/display/*` glob). Omitting `/storage/images/*` leaves the device screen blank.
 - **No `APP_URL`** — LaraPaper builds asset URLs from the request Host header, which the
   Umbrel proxy forwards, so CSS/JS resolve correctly without pinning an absolute URL.
 - **Volumes** — SQLite DB (`data/database`) and generated screen PNGs (`data/generated`).

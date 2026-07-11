@@ -68,10 +68,16 @@ If a feature ever needs fully-qualified absolute URLs (e.g. a device image URL),
 - **A narrow `PROXY_AUTH_WHITELIST`** on `app_proxy`: only the exact routes devices and webhook
   publishers reach without a browser session bypass Umbrel's auth — the firmware protocol
   (`/api/setup`, `/api/display`, `/api/log`, `/api/current_screen`), webhooks (`/api/custom_plugins/*`),
-  the token REST API (`/api/devices`), and the rendered PNGs (`/storage/images/*`). Whitelisted
-  paths are public, so management routes (`/api/user`, `/api/me`, `/api/plugin_settings/*`,
-  `/api/display/update`) are deliberately left off. Umbrel's proxy matches bare paths exactly and
-  `"/path/*"` as child-only. Without `/storage/images/*` the device screen goes blank.
+  the token REST API (`/api/devices`), the rendered PNGs (`/storage/images/*`), and the
+  uuid-gated alias preview (`/api/display/{uuid}/alias`, used by BYOS tooling to fetch a
+  plugin's rendered screen without a browser session). Whitelisted paths are public, so
+  management routes (`/api/user`, `/api/me`, `/api/plugin_settings/*`, `/api/display/status`,
+  `/api/display/update`) are deliberately kept behind Umbrel auth. The proxy matches bare
+  paths exactly and `"/path/*"` as child-only, with no mid-path wildcard, so admitting the
+  alias route takes the `/api/display/*` child glob; the two Sanctum management children
+  that glob would also admit (`/api/display/status`, `/api/display/update`) are excluded
+  again via `PROXY_AUTH_BLACKLIST`, which app_proxy evaluates with priority over the
+  whitelist. Without `/storage/images/*` the device screen goes blank.
 - **`hooks/pre-start`**: pre-creates and `chown`s the data dirs to `82:82` (www-data on the
   Alpine base). Without it the app can't create its SQLite DB on first boot. Idempotent, so
   it is also a safe update-time migration.
