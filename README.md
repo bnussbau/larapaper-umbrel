@@ -58,18 +58,20 @@ merged, the "already published" check stops it from re-opening.
 
 ### One-time setup the repo owner must do
 
-1. **Fork** `getumbrel/umbrel-apps` under your account (e.g. `bnussbau/umbrel-apps`).
-   Keep it around — the workflow pushes its PR branches there.
-2. **Create a Personal Access Token** that can push to your fork *and* open PRs on
+1. **Create a Personal Access Token** that can create/push a fork *and* open PRs on
    `getumbrel/umbrel-apps`:
    - **Classic PAT:** scope `repo`, **or**
-   - **Fine-grained PAT:** *Contents = Read/Write* + *Pull requests = Read/Write*,
-     granted on your `umbrel-apps` fork.
+   - **Fine-grained PAT:** *Contents = Read/Write* + *Pull requests = Read/Write* +
+     *Administration = Read/Write* (fork creation), on your account.
 
    Add it as a repository **Actions secret** named `UMBREL_APPS_TOKEN`
    (*Settings → Secrets and variables → Actions → New repository secret*).
-3. **Add an Actions variable** `FORK_OWNER` = your fork's login (e.g. `bnussbau`)
+2. **Add an Actions variable** `FORK_OWNER` = your GitHub login (e.g. `bnussbau`)
    (*Settings → Secrets and variables → Actions → Variables → New repository variable*).
+
+The workflow **creates the `FORK_OWNER/umbrel-apps` fork for you** on its first real run
+if it does not exist yet, so you do not have to fork by hand. (Forking manually once also
+works.) `FORK_OWNER` should be the account that owns `UMBREL_APPS_TOKEN`.
 
 That is the entire setup. No secrets live in this repo.
 

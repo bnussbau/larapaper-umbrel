@@ -154,6 +154,37 @@ jobs:
             echo "update=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # --- 4b. Make sure the umbrel-apps fork exists -------------------------
+      # create-pull-request pushes the PR branch to FORK_OWNER/umbrel-apps, which
+      # must already be a fork of getumbrel/umbrel-apps. If it is missing the run
+      # would die with a cryptic "Not Found" from git. Create it from the token
+      # owner's account (which is FORK_OWNER in the normal setup) and wait for
+      # GitHub to finish provisioning it, so the owner only has to set the token
+      # and FORK_OWNER, not fork by hand.
+      - name: Ensure the umbrel-apps fork exists
+        if: steps.decide.outputs.update == 'true' && steps.cfg.outputs.configured == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.UMBREL_APPS_TOKEN }}
+          FORK: ${{ vars.FORK_OWNER }}
+        run: |
+          set -euo pipefail
+          if gh repo view "${FORK}/umbrel-apps" >/dev/null 2>&1; then
+            echo "Fork ${FORK}/umbrel-apps already exists."
+            exit 0
+          fi
+          echo "::notice::Fork ${FORK}/umbrel-apps not found; creating it from ${UMBREL_APPS}."
+          gh api -X POST "repos/${UMBREL_APPS}/forks" -F default_branch_only=true >/dev/null
+          for i in $(seq 1 30); do
+            if gh repo view "${FORK}/umbrel-apps" >/dev/null 2>&1; then
+              echo "Fork ${FORK}/umbrel-apps is ready."
+              exit 0
+            fi
+            echo "waiting for fork to be provisioned... ($i)"
+            sleep 6
+          done
+          echo "::error::Fork ${FORK}/umbrel-apps is still not available. If FORK_OWNER is not the account that owns UMBREL_APPS_TOKEN, create the fork manually once (see README)."
+          exit 1
+
       # --- 5. Check out the upstream store into ./upstream -------------------
       - name: Checkout getumbrel/umbrel-apps
         if: steps.decide.outputs.update == 'true' && steps.cfg.outputs.configured == 'true'
