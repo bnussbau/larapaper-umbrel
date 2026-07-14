@@ -167,22 +167,26 @@ jobs:
           GH_TOKEN: ${{ secrets.UMBREL_APPS_TOKEN }}
           FORK: ${{ vars.FORK_OWNER }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           if gh repo view "${FORK}/umbrel-apps" >/dev/null 2>&1; then
             echo "Fork ${FORK}/umbrel-apps already exists."
             exit 0
           fi
-          echo "::notice::Fork ${FORK}/umbrel-apps not found; creating it from ${UMBREL_APPS}."
-          gh api -X POST "repos/${UMBREL_APPS}/forks" -F default_branch_only=true >/dev/null
-          for i in $(seq 1 30); do
-            if gh repo view "${FORK}/umbrel-apps" >/dev/null 2>&1; then
-              echo "Fork ${FORK}/umbrel-apps is ready."
-              exit 0
-            fi
-            echo "waiting for fork to be provisioned... ($i)"
-            sleep 6
-          done
-          echo "::error::Fork ${FORK}/umbrel-apps is still not available. If FORK_OWNER is not the account that owns UMBREL_APPS_TOKEN, create the fork manually once (see README)."
+          # Best-effort auto-create. A classic PAT with the 'repo' scope can fork;
+          # a fine-grained PAT usually cannot fork a repo it does not own (403), so
+          # this may fail, which is fine -- we fall through to a clear message.
+          echo "::notice::Fork ${FORK}/umbrel-apps not found; attempting to create it from ${UMBREL_APPS}."
+          if gh api -X POST "repos/${UMBREL_APPS}/forks" -F default_branch_only=true >/dev/null 2>&1; then
+            for i in $(seq 1 30); do
+              if gh repo view "${FORK}/umbrel-apps" >/dev/null 2>&1; then
+                echo "Fork ${FORK}/umbrel-apps is ready."
+                exit 0
+              fi
+              echo "waiting for fork to be provisioned... ($i)"
+              sleep 6
+            done
+          fi
+          echo "::error::Could not find or auto-create ${FORK}/umbrel-apps. A fine-grained PAT usually cannot fork a repo you do not own. Do ONE of: (a) fork getumbrel/umbrel-apps by hand once (https://github.com/getumbrel/umbrel-apps -> Fork, owner ${FORK}), or (b) set UMBREL_APPS_TOKEN to a classic PAT with the 'repo' scope. Then re-run this workflow."
           exit 1
 
       # --- 5. Check out the upstream store into ./upstream -------------------
