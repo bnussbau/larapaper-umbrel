@@ -1,8 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LaraPaper">
-  <rect width="512" height="512" rx="112" fill="#f44900"/>
-  <rect x="116" y="128" width="280" height="256" rx="24" fill="#fff"/>
-  <rect x="152" y="176" width="208" height="24" rx="12" fill="#f44900"/>
-  <rect x="152" y="224" width="160" height="20" rx="10" fill="#1a1a1a"/>
-  <rect x="152" y="264" width="208" height="20" rx="10" fill="#1a1a1a"/>
-  <rect x="152" y="304" width="120" height="20" rx="10" fill="#1a1a1a"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000"><defs><clipPath id="a"><path d="M0 0h1000v1000H0z"/></clipPath></defs><g clip-path="url(#a)"><path fill="#F8654B" d="M0 0h1000v1000H0z"/><rect width="700" height="525" x="150" y="237.5" fill="#fff" rx="36"/><rect width="604" height="399" x="198" y="285.5" fill="#F8654B" rx="12"/><path fill="#fff" fill-rule="evenodd" d="M524.4 614.66V392.04h36.7v-36.7h113.73v36.7h37.1v112.92h-37.1v36.7h-109.7v73Zm40.73-113.73H670.8V396.07H565.13ZM324.77 614.66v-36.3h-36.7V355.34h40.73v219h105.66v-36.7h41.14v40.72h-37.1v36.3Z"/></g></svg>

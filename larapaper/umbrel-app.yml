@@ -1,25 +1,13 @@
 manifestVersion: 1
-id: larapaper
+id: usetrmnl-larapaper
 category: automation
 name: LaraPaper
 version: "0.38.0"
-tagline: Self-hosted TRMNL BYOS server for your e-ink dashboards
+tagline: Community-driven self-hosted application (BYOS) to manage TRMNL e-paper devices.
 description: >-
-  LaraPaper is a self-hosted TRMNL BYOS ("Bring Your Own Server") for e-ink
-  dashboard devices. Your TRMNL and TRMNL-compatible e-ink screens poll this
-  server for images instead of the TRMNL cloud, so your dashboards stay on your
-  Umbrel.
-
-
-  Build screens from "recipe"/plugin templates (weather, calendar, RSS, custom
-  Liquid templates, and more), and LaraPaper renders them to PNG with headless
-  Chromium for your devices to display. Everything is managed from a simple web
-  UI: no CLI, no cloud account, no per-device subscription.
-
-
-  On first launch, open the app and register an admin account. Data is stored
-  locally in a SQLite database on your Umbrel.
-releaseNotes: ""
+  LaraPaper is a self-hosted BYOS ("Bring Your Own Server") for TRMNL e-paper devices.
+releaseNotes: >-
+  Please refer to the [GitHub release page](https://github.com/usetrmnl/larapaper/releases/) for detailed release notes.
 
 developer: usetrmnl
 website: https://docs.usetrmnl.com/go/diy/byos
@@ -34,5 +22,5 @@ path: ""
 defaultUsername: ""
 defaultPassword: ""
 
-submitter: arquiguru
+submitter: bnussbau
 submission: ""
