@@ -29,7 +29,7 @@ jobs:
                    submitter submission; do
             yq -e "has(\"$f\")" "$M" >/dev/null || { echo "::error::missing manifest field: $f"; exit 1; }
           done
-          test "$(yq -r '.id' "$M")" = "usetrmnl-larapaper"
+          test "$(yq -r '.id' "$M")" = "larapaper"
           # category must be one Umbrel accepts
           case "$(yq -r '.category' "$M")" in
             ai|automation|bitcoin|crypto|developer|files|finance|media|networking|social) ;;
