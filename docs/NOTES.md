@@ -1,6 +1,6 @@
 # LaraPaper Umbrel package — design notes
 
-Rationale behind the packaging choices in `larapaper/`. These were validated against the
+Rationale behind the packaging choices in `usetrmnl-larapaper/`. These were validated against the
 pinned image on a real Umbrel install (fresh install + update path + device polling +
 SQLite persistence).
 
@@ -95,5 +95,5 @@ Per the getumbrel/umbrel-apps linter for **new** submissions:
 
 - `gallery: []` — leave empty; Umbrel creates the final gallery assets.
 - No `icon:` field — Umbrel hosts the official icon (the SVG lives in `assets/`).
-- No image/icon/screenshot files inside the `larapaper/` folder — they belong in the PR
+- No image/icon/screenshot files inside the `usetrmnl-larapaper/` folder — they belong in the PR
   body / Umbrel's asset pipeline.
