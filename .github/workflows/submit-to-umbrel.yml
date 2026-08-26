@@ -5,7 +5,7 @@ name: Submit LaraPaper update to Umbrel App Store
 # ---------------------------------------------------------------------------
 # Watches upstream LaraPaper (usetrmnl/larapaper) for a new STABLE release and,
 # when one appears, opens (or updates) a version-bump pull request against
-# getumbrel/umbrel-apps for the `larapaper` package. The PR:
+# getumbrel/umbrel-apps for the `usetrmnl-larapaper` package. The PR:
 #   - sets the manifest `version` to the new upstream version
 #   - pins docker-compose to `IMAGE:<version>@sha256:<multi-arch index digest>`
 #   - refreshes `releaseNotes` with a link to the upstream release
@@ -19,14 +19,16 @@ name: Submit LaraPaper update to Umbrel App Store
 #   1. Fork getumbrel/umbrel-apps under your account (e.g. bnussbau/umbrel-apps).
 #   2. Create a Personal Access Token that can push to that fork AND open PRs on
 #      getumbrel/umbrel-apps:
-#        - classic PAT: scope `repo`, OR
-#        - fine-grained PAT: Contents = Read/Write + Pull requests = Read/Write,
-#          granted on your umbrel-apps fork.
+#        - classic PAT with the `public_repo` (or `repo`) scope. This is the one
+#          that works: a fine-grained PAT can push to your fork but CANNOT open
+#          the PR on getumbrel/umbrel-apps (it is not a repo you can grant it on),
+#          so create-pull-request fails with "Resource not accessible by
+#          personal access token".
 #      Store it as an Actions secret named `UMBREL_APPS_TOKEN`.
 #   3. Add an Actions *variable* `FORK_OWNER` = the fork owner's login
 #      (e.g. `bnussbau`).
 #
-# Idempotency: the PR branch is named `larapaper-<version>`, so a re-run for the
+# Idempotency: the PR branch is named `usetrmnl-larapaper-<version>`, so a re-run for the
 # same version updates the existing PR instead of opening a duplicate. Once the
 # PR is merged, the "already published" check below sees the new version on
 # umbrel-apps:master and the job goes quiet until the next upstream release.
@@ -48,7 +50,7 @@ permissions:
 env:
   UPSTREAM_REPO: usetrmnl/larapaper
   IMAGE: ghcr.io/usetrmnl/larapaper
-  APP_ID: larapaper
+  APP_ID: usetrmnl-larapaper
   UMBREL_APPS: getumbrel/umbrel-apps
   UMBREL_BASE: master
 
@@ -215,13 +217,13 @@ jobs:
           set -euo pipefail
           DEST="upstream/${APP_ID}"
           mkdir -p "${DEST}/hooks"
-          cp larapaper/docker-compose.yml "${DEST}/docker-compose.yml"
-          cp larapaper/exports.sh          "${DEST}/exports.sh"
-          cp larapaper/hooks/pre-start     "${DEST}/hooks/pre-start"
+          cp "${APP_ID}/docker-compose.yml" "${DEST}/docker-compose.yml"
+          cp "${APP_ID}/exports.sh"          "${DEST}/exports.sh"
+          cp "${APP_ID}/hooks/pre-start"     "${DEST}/hooks/pre-start"
           chmod +x "${DEST}/exports.sh" "${DEST}/hooks/pre-start"
 
           if [ ! -s "${DEST}/umbrel-app.yml" ]; then
-            cp larapaper/umbrel-app.yml "${DEST}/umbrel-app.yml"
+            cp "${APP_ID}/umbrel-app.yml" "${DEST}/umbrel-app.yml"
           fi
           MAN="${DEST}/umbrel-app.yml"
           yq -i ".version = \"${T}\"" "${MAN}"
@@ -232,7 +234,7 @@ jobs:
           else
             yq -i ".releaseNotes = \"Packages LaraPaper ${T}. Upstream release notes: https://github.com/${UPSTREAM_REPO}/releases/tag/${T}\"" "${MAN}"
           fi
-          yq -i ".services.server.image = \"${IMAGE}:${T}@${D}\"" "${DEST}/docker-compose.yml"
+          yq -i ".services.app.image = \"${IMAGE}:${T}@${D}\"" "${DEST}/docker-compose.yml"
 
           echo "----- resulting diff -----"
           git -C upstream --no-pager diff -- "${APP_ID}" || true
@@ -245,13 +247,13 @@ jobs:
           token: ${{ secrets.UMBREL_APPS_TOKEN }}
           path: upstream
           push-to-fork: ${{ vars.FORK_OWNER }}/umbrel-apps
-          branch: larapaper-${{ steps.ver.outputs.target }}
+          branch: ${{ env.APP_ID }}-${{ steps.ver.outputs.target }}
           base: ${{ env.UMBREL_BASE }}
           delete-branch: true
-          commit-message: "larapaper: update to ${{ steps.ver.outputs.target }}"
-          title: "larapaper: update to ${{ steps.ver.outputs.target }}"
+          commit-message: "${{ env.APP_ID }}: update to ${{ steps.ver.outputs.target }}"
+          title: "${{ env.APP_ID }}: update to ${{ steps.ver.outputs.target }}"
           body: |
-            Updates the `larapaper` package: **${{ steps.published.outputs.current }} → ${{ steps.ver.outputs.target }}**.
+            Updates the `${{ env.APP_ID }}` package: **${{ steps.published.outputs.current }} → ${{ steps.ver.outputs.target }}**.
 
             - Image: `${{ env.IMAGE }}:${{ steps.ver.outputs.target }}`
             - Digest (multi-arch index, `linux/amd64` + `linux/arm64`): `${{ steps.digest.outputs.digest }}`

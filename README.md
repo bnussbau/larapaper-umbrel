@@ -17,7 +17,7 @@ cloud.
 
 ```
 larapaper-umbrel/
-├── larapaper/                     ← the umbrel-apps package (this folder IS the PR content)
+├── usetrmnl-larapaper/                     ← the umbrel-apps package (this folder IS the PR content)
 │   ├── umbrel-app.yml             ← manifest (gallery: [] and no `icon:` per official-store rules)
 │   ├── docker-compose.yml         ← app_proxy + server, image digest-pinned
 │   ├── exports.sh                 ← derives a unique, stable per-install Laravel APP_KEY
@@ -26,13 +26,13 @@ larapaper-umbrel/
 │   ├── submit-to-umbrel.yml       ← the release watcher → opens the version-bump PR
 │   └── lint.yml                   ← fast pre-flight validation on push/PR
 ├── assets/
-│   └── icon.svg                   ← icon to hand to Umbrel (NOT committed into larapaper/)
+│   └── icon.svg                   ← icon to hand to Umbrel (NOT committed into usetrmnl-larapaper/)
 ├── docs/NOTES.md                  ← packaging design decisions (APP_KEY, APP_URL, volumes)
 ├── LICENSE                        ← MIT (matches LaraPaper)
 └── README.md
 ```
 
-The `larapaper/` folder is exactly what lands in `getumbrel/umbrel-apps/larapaper/`.
+The `usetrmnl-larapaper/` folder is exactly what lands in `getumbrel/umbrel-apps/larapaper/`.
 
 ---
 
@@ -53,7 +53,7 @@ The `larapaper/` folder is exactly what lands in `getumbrel/umbrel-apps/larapape
 
 The PR is opened **fork → upstream**: it pushes the branch to *your fork* of umbrel-apps
 and opens the PR against `getumbrel/umbrel-apps`. The branch is named
-`larapaper-<version>`, so re-runs **update the same PR** instead of duplicating it; once
+`usetrmnl-larapaper-<version>`, so re-runs **update the same PR** instead of duplicating it; once
 merged, the "already published" check stops it from re-opening.
 
 ### One-time setup the repo owner must do
@@ -65,9 +65,15 @@ merged, the "already published" check stops it from re-opening.
    own**, so with one of those you must fork by hand, which is why it's listed as step 1.)
 2. **Create a Personal Access Token** that can push to your fork *and* open PRs on
    `getumbrel/umbrel-apps`:
-   - **Classic PAT:** scope `repo`, **or**
-   - **Fine-grained PAT:** *Contents = Read/Write* + *Pull requests = Read/Write*,
-     granted on your `umbrel-apps` fork.
+   - **Classic PAT** with the `public_repo` scope (`repo` also works). Create it at
+     https://github.com/settings/tokens → *Tokens (classic)* → *Generate new token*.
+
+   > **Why not a fine-grained PAT?** A fine-grained token can push to *your* fork, but it
+   > cannot open a pull request on `getumbrel/umbrel-apps` because that is not a repo you
+   > can grant it access to. The run then dies at the last step with
+   > `Resource not accessible by personal access token`. Classic tokens with `public_repo`
+   > are allowed to open PRs on any public repo, which is exactly what the fork → upstream
+   > flow needs.
 
    Add it as a repository **Actions secret** named `UMBREL_APPS_TOKEN`
    (*Settings → Secrets and variables → Actions → New repository secret*).
@@ -121,7 +127,7 @@ this repo's own pin kept fresh.
 
 The watcher ships the plain upstream version (e.g. `0.38.0`). If you ever need a
 *packaging-only* fix without an upstream bump, use a suffix so Umbrel still offers the
-update (e.g. `0.38.0+1`) and edit `larapaper/` by hand.
+update (e.g. `0.38.0+1`) and edit `usetrmnl-larapaper/` by hand.
 
 ---
 
@@ -130,7 +136,7 @@ update (e.g. `0.38.0+1`) and edit `larapaper/` by hand.
 - **Gallery screenshots** — the manifest ships `gallery: []` on purpose; Umbrel's linter
   asks new official submissions to leave it empty and Umbrel produces the final gallery
   assets. Supply 3–5 `.webp` screenshots in the PR body (or to Umbrel) when ready. Do
-  **not** commit them into `larapaper/` — Umbrel's linter rejects image assets in the app
+  **not** commit them into `usetrmnl-larapaper/` — Umbrel's linter rejects image assets in the app
   folder.
 - **Icon** — `assets/icon.svg` is included for convenience; the manifest omits `icon:`
   because Umbrel hosts the official icon. Hand the SVG to Umbrel with the submission.
