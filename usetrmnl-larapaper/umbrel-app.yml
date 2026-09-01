@@ -15,7 +15,7 @@ dependencies: []
 repo: https://github.com/usetrmnl/larapaper
 support: https://github.com/usetrmnl/larapaper/issues
 
-port: 4567
+port: 4568
 gallery: []
 path: ""
 
@@ -23,4 +23,4 @@ defaultUsername: ""
 defaultPassword: ""
 
 submitter: bnussbau
-submission: ""
+submission: "https://github.com/getumbrel/umbrel-apps/pull/6022"

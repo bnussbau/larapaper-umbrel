@@ -220,7 +220,20 @@ jobs:
           cp "${APP_ID}/docker-compose.yml" "${DEST}/docker-compose.yml"
           cp "${APP_ID}/exports.sh"          "${DEST}/exports.sh"
           cp "${APP_ID}/hooks/pre-start"     "${DEST}/hooks/pre-start"
-          chmod +x "${DEST}/exports.sh" "${DEST}/hooks/pre-start"
+
+          # Bind-mount sources must exist as committed placeholder dirs in the
+          # package, or the umbrel-apps linter rejects the PR with
+          # "Bind mount source `${APP_DATA_DIR}/data/<x>/` is not committed".
+          # Mirror whatever data/ placeholders this repo carries.
+          if [ -d "${APP_ID}/data" ]; then
+            mkdir -p "${DEST}/data"
+            cp -R "${APP_ID}/data/." "${DEST}/data/"
+          fi
+
+          # exports.sh is SOURCED by Umbrel, not executed, and the linter warns
+          # if it is executable. hooks/pre-start IS executed, so it keeps +x.
+          chmod 644 "${DEST}/exports.sh"
+          chmod +x  "${DEST}/hooks/pre-start"
 
           if [ ! -s "${DEST}/umbrel-app.yml" ]; then
             cp "${APP_ID}/umbrel-app.yml" "${DEST}/umbrel-app.yml"
