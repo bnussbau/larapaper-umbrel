@@ -52,9 +52,11 @@ The `usetrmnl-larapaper/` folder is exactly what lands in `getumbrel/umbrel-apps
    `getumbrel/umbrel-apps` (base `master`).
 
 The PR is opened **fork → upstream**: it pushes the branch to *your fork* of umbrel-apps
-and opens the PR against `getumbrel/umbrel-apps`. The branch is named
-`usetrmnl-larapaper-<version>`, so re-runs **update the same PR** instead of duplicating it; once
-merged, the "already published" check stops it from re-opening.
+and opens the PR against `getumbrel/umbrel-apps`. If you already have an open PR there
+touching this package, re-runs **push the bump to that PR's branch** instead of opening a
+second one (so the first-submission PR simply tracks the latest stable release while it is
+under review); otherwise the branch is named `usetrmnl-larapaper-<version>`. Once merged, the
+"already published" check stops it from re-opening.
 
 ### One-time setup the repo owner must do
 

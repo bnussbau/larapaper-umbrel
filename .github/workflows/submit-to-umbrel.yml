@@ -28,10 +28,12 @@ name: Submit LaraPaper update to Umbrel App Store
 #   3. Add an Actions *variable* `FORK_OWNER` = the fork owner's login
 #      (e.g. `bnussbau`).
 #
-# Idempotency: the PR branch is named `usetrmnl-larapaper-<version>`, so a re-run for the
-# same version updates the existing PR instead of opening a duplicate. Once the
-# PR is merged, the "already published" check below sees the new version on
-# umbrel-apps:master and the job goes quiet until the next upstream release.
+# Idempotency: if the fork owner already has an open PR on umbrel-apps touching
+# this package, the bump is pushed to THAT PR's branch (whatever its name), so
+# a new upstream release never opens a second, competing PR. Otherwise the
+# branch is named `usetrmnl-larapaper-<version>`. Once the PR is merged, the
+# "already published" check below sees the new version on umbrel-apps:master
+# and the job goes quiet until the next upstream release.
 # ---------------------------------------------------------------------------
 
 on:
@@ -252,37 +254,128 @@ jobs:
           echo "----- resulting diff -----"
           git -C upstream --no-pager diff -- "${APP_ID}" || true
 
-      # --- 7. Open / update the cross-repo PR (fork -> upstream) -------------
-      - name: Open or update PR to umbrel-apps
+      # --- 7a. Is there already an open umbrel-apps PR for this package? -----
+      # If the fork owner already has an open PR touching APP_ID (e.g. the
+      # first-submission PR still under review when upstream ships the next
+      # version), we push the bump to THAT PR's branch instead of opening a
+      # second, competing PR. Reading public PRs needs no special token.
+      - name: Find an open umbrel-apps PR for this package
+        id: existing
         if: steps.decide.outputs.update == 'true' && steps.cfg.outputs.configured == 'true'
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.UMBREL_APPS_TOKEN }}
-          path: upstream
-          push-to-fork: ${{ vars.FORK_OWNER }}/umbrel-apps
-          branch: ${{ env.APP_ID }}-${{ steps.ver.outputs.target }}
-          base: ${{ env.UMBREL_BASE }}
-          delete-branch: true
-          commit-message: "${{ env.APP_ID }}: update to ${{ steps.ver.outputs.target }}"
-          title: "${{ env.APP_ID }}: update to ${{ steps.ver.outputs.target }}"
-          body: |
-            Updates the `${{ env.APP_ID }}` package: **${{ steps.published.outputs.current }} → ${{ steps.ver.outputs.target }}**.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORK: ${{ vars.FORK_OWNER }}
+        run: |
+          set -euo pipefail
+          NUMBER=""; REF=""
+          while read -r n ref; do
+            [ -n "${n}" ] || continue
+            if gh api "repos/${UMBREL_APPS}/pulls/${n}/files" --paginate --jq '.[].filename' \
+                 | grep -q "^${APP_ID}/"; then
+              NUMBER="${n}"; REF="${ref}"; break
+            fi
+          done < <(gh api "repos/${UMBREL_APPS}/pulls?state=open&per_page=100" --paginate \
+                     --jq ".[] | select(.head.repo.owner.login == \"${FORK}\") | \"\(.number) \(.head.ref)\"")
+          if [ -n "${NUMBER}" ]; then
+            echo "Open PR #${NUMBER} (branch ${FORK}:${REF}) already covers ${APP_ID}; will update it."
+          else
+            echo "No open PR from ${FORK} touches ${APP_ID}; a new one will be opened."
+          fi
+          echo "number=${NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "ref=${REF}"       >> "$GITHUB_OUTPUT"
 
-            - Image: `${{ env.IMAGE }}:${{ steps.ver.outputs.target }}`
-            - Digest (multi-arch index, `linux/amd64` + `linux/arm64`): `${{ steps.digest.outputs.digest }}`
-            - Upstream release notes: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${{ steps.ver.outputs.target }}
+      # --- 7b. Commit and push the PR branch to the fork ---------------------
+      # Branch = the existing PR's head if there is one, else APP_ID-<version>.
+      # The push uses the credentials actions/checkout persisted from
+      # UMBREL_APPS_TOKEN (they apply to any github.com remote). Re-runs skip
+      # the push when the fork branch already holds exactly this content, so a
+      # PR under review is not rewritten every day for nothing.
+      - name: Push the update branch to the fork
+        id: push
+        if: steps.decide.outputs.update == 'true' && steps.cfg.outputs.configured == 'true'
+        env:
+          FORK: ${{ vars.FORK_OWNER }}
+          T: ${{ steps.ver.outputs.target }}
+          EXISTING_REF: ${{ steps.existing.outputs.ref }}
+        run: |
+          set -euo pipefail
+          cd upstream
+          BRANCH="${EXISTING_REF:-${APP_ID}-${T}}"
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q -b "${BRANCH}"
+          git add -A -- "${APP_ID}"
+          if git diff --cached --quiet; then
+            echo "Package is identical to ${UMBREL_APPS}:${UMBREL_BASE}; nothing to push."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          git commit -q -m "${APP_ID}: update to ${T}"
+          git remote add fork "https://github.com/${FORK}/umbrel-apps.git"
+          if git fetch -q --depth=1 fork "${BRANCH}" 2>/dev/null \
+             && git diff --quiet FETCH_HEAD HEAD -- "${APP_ID}"; then
+            echo "Fork branch ${FORK}:${BRANCH} already has this content; nothing to push."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          git push -q --force fork "HEAD:refs/heads/${BRANCH}"
+          echo "Pushed ${APP_ID} ${T} to ${FORK}:${BRANCH}."
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
 
-            **Automated version + digest bump** opened by the LaraPaper packaging
-            repo's release watcher. It changes only the manifest `version`, the
-            pinned image tag/digest, and `releaseNotes` — no compose, exports,
-            hooks, `app_proxy`, permissions, or persistence changes.
+      # --- 7c. Open the cross-repo PR (fork -> upstream) if none exists ------
+      # Opening a PR on getumbrel/umbrel-apps is the one call that needs a
+      # classic PAT (see the header). If it fails, the branch is already on the
+      # fork, so the error links the one-click "compare" page as a fallback.
+      - name: Open PR to umbrel-apps
+        if: steps.decide.outputs.update == 'true' && steps.cfg.outputs.configured == 'true' && steps.existing.outputs.number == ''
+        env:
+          GH_TOKEN: ${{ secrets.UMBREL_APPS_TOKEN }}
+          FORK: ${{ vars.FORK_OWNER }}
+          BRANCH: ${{ steps.push.outputs.branch }}
+          T: ${{ steps.ver.outputs.target }}
+          C: ${{ steps.published.outputs.current }}
+          D: ${{ steps.digest.outputs.digest }}
+        run: |
+          set -euo pipefail
+          TITLE="${APP_ID}: update to ${T}"
+          cat > pr-body.md <<EOF
+          Updates the \`${APP_ID}\` package: **${C} → ${T}**.
 
-            **Testing:** the package structure (fresh install, `app_proxy` device
-            polling over the whitelisted device/webhook routes, rendered image
-            fetch, SQLite persistence) was runtime-verified on a real Umbrel device
-            (`linux/amd64`) at the baseline version. This individual version bump
-            was **not** runtime-tested
-            — a maintainer should confirm the update path on their instance before
-            merge. No generated secrets or private data are included.
+          - Image: \`${IMAGE}:${T}\`
+          - Digest (multi-arch index, \`linux/amd64\` + \`linux/arm64\`): \`${D}\`
+          - Upstream release notes: https://github.com/${UPSTREAM_REPO}/releases/tag/${T}
 
-            Developer: [usetrmnl/larapaper](https://github.com/usetrmnl/larapaper) · packaging by arquiguru.
+          **Automated version + digest bump** opened by the LaraPaper packaging
+          repo's release watcher. It changes only the manifest \`version\`, the
+          pinned image tag/digest, and \`releaseNotes\` — no compose, exports,
+          hooks, \`app_proxy\`, permissions, or persistence changes.
+
+          **Testing:** the package structure (fresh install, \`app_proxy\` device
+          polling over the whitelisted device/webhook routes, rendered image
+          fetch, SQLite persistence) was runtime-verified on a real Umbrel device
+          (\`linux/amd64\`) at the baseline version. This individual version bump
+          was **not** runtime-tested
+          — a maintainer should confirm the update path on their instance before
+          merge. No generated secrets or private data are included.
+
+          Developer: [usetrmnl/larapaper](https://github.com/usetrmnl/larapaper) · packaging by arquiguru.
+          EOF
+          if URL="$(gh pr create --repo "${UMBREL_APPS}" --base "${UMBREL_BASE}" \
+                      --head "${FORK}:${BRANCH}" --title "${TITLE}" --body-file pr-body.md)"; then
+            echo "Opened ${URL}"
+          else
+            echo "::error::Could not open the PR on ${UMBREL_APPS}. The branch IS pushed to ${FORK}/umbrel-apps:${BRANCH} — open it by hand at https://github.com/${UMBREL_APPS}/compare/${UMBREL_BASE}...${FORK}:${BRANCH}?expand=1 — and, to make this automatic, replace the UMBREL_APPS_TOKEN secret with a CLASSIC PAT that has the 'public_repo' scope (a fine-grained PAT cannot open PRs on repos you do not own; see README)."
+            exit 1
+          fi
+
+      - name: Report
+        if: steps.decide.outputs.update == 'true' && steps.cfg.outputs.configured == 'true' && steps.existing.outputs.number != ''
+        env:
+          N: ${{ steps.existing.outputs.number }}
+          PUSHED: ${{ steps.push.outputs.pushed }}
+          T: ${{ steps.ver.outputs.target }}
+        run: |
+          if [ "${PUSHED}" = "true" ]; then
+            echo "::notice::Updated open PR https://github.com/${UMBREL_APPS}/pull/${N} to ${APP_ID} ${T}."
+          else
+            echo "::notice::Open PR https://github.com/${UMBREL_APPS}/pull/${N} already at ${APP_ID} ${T}; nothing pushed."
+          fi
