@@ -55,7 +55,9 @@ The PR is opened **fork → upstream**: it pushes the branch to *your fork* of u
 and opens the PR against `getumbrel/umbrel-apps`. If you already have an open PR there
 touching this package, re-runs **push the bump to that PR's branch** instead of opening a
 second one (so the first-submission PR simply tracks the latest stable release while it is
-under review); otherwise the branch is named `usetrmnl-larapaper-<version>`. Once merged, the
+under review). The bump lands as a new commit on top of that branch, never a force-push, so
+anything a reviewer pushed to the PR stays. Without an open PR, the branch is named
+`usetrmnl-larapaper-<version>`. Once merged, the
 "already published" check stops it from re-opening.
 
 ### One-time setup the repo owner must do
@@ -67,7 +69,8 @@ under review); otherwise the branch is named `usetrmnl-larapaper-<version>`. Onc
    own**, so with one of those you must fork by hand, which is why it's listed as step 1.)
 2. **Create a Personal Access Token** that can push to your fork *and* open PRs on
    `getumbrel/umbrel-apps`:
-   - **Classic PAT** with the `public_repo` scope (`repo` also works). Create it at
+   - **Classic PAT** with the `public_repo` scope (`repo` also works) **plus the `workflow`
+     scope**. Create it at
      https://github.com/settings/tokens → *Tokens (classic)* → *Generate new token*.
 
    > **Why not a fine-grained PAT?** A fine-grained token can push to *your* fork, but it
@@ -76,6 +79,15 @@ under review); otherwise the branch is named `usetrmnl-larapaper-<version>`. Onc
    > `Resource not accessible by personal access token`. Classic tokens with `public_repo`
    > are allowed to open PRs on any public repo, which is exactly what the fork → upstream
    > flow needs.
+
+   > **Why `workflow`?** A *new* PR branch starts from today's `umbrel-apps` master. When
+   > `umbrel-apps` has edited its own `.github/workflows/` files since your fork last caught
+   > up, pushing that branch forwards those commits, and GitHub refuses it for a token
+   > without `workflow` (`refusing to allow a Personal Access Token to create or update
+   > workflow … without workflow scope`). The workflow never edits a workflow file itself.
+   > **Already have the token?** Open it at https://github.com/settings/tokens, tick
+   > `workflow` and click *Update token*: the token value stays the same, so the secret
+   > needs no change.
 
    Add it as a repository **Actions secret** named `UMBREL_APPS_TOKEN`
    (*Settings → Secrets and variables → Actions → New repository secret*).

@@ -24,6 +24,11 @@ name: Submit LaraPaper update to Umbrel App Store
 #          the PR on getumbrel/umbrel-apps (it is not a repo you can grant it on),
 #          so create-pull-request fails with "Resource not accessible by
 #          personal access token".
+#        - plus the `workflow` scope. A NEW PR branch starts from today's
+#          umbrel-apps master; when umbrel-apps has edited its own
+#          .github/workflows/ since your fork last caught up, GitHub refuses to
+#          let a token without `workflow` push those commits to the fork. This
+#          workflow never edits a workflow file itself.
 #      Store it as an Actions secret named `UMBREL_APPS_TOKEN`.
 #   3. Add an Actions *variable* `FORK_OWNER` = the fork owner's login
 #      (e.g. `bnussbau`).
@@ -290,6 +295,15 @@ jobs:
       # UMBREL_APPS_TOKEN (they apply to any github.com remote). Re-runs skip
       # the push when the fork branch already holds exactly this content, so a
       # PR under review is not rewritten every day for nothing.
+      #
+      # A branch that already exists on the fork (the open PR's head) gets the
+      # bump as a new commit ON TOP of it, pushed as a plain fast-forward. It is
+      # never rebuilt on today's umbrel-apps master and force-pushed: a rebuilt
+      # branch carries every upstream commit since the PR's base, and GitHub
+      # refuses the whole push when one of them edits .github/workflows/ and the
+      # token lacks the `workflow` scope (2026-09-27: umbrel-apps changed
+      # lint-apps.yml on 09-17). A commit on top only touches APP_ID/, so it
+      # needs no such scope, and any commit a reviewer pushed to the PR stays.
       - name: Push the update branch to the fork
         id: push
         if: steps.decide.outputs.update == 'true' && steps.cfg.outputs.configured == 'true'
@@ -310,14 +324,29 @@ jobs:
             echo "Package is identical to ${UMBREL_APPS}:${UMBREL_BASE}; nothing to push."
             echo "pushed=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          git commit -q -m "${APP_ID}: update to ${T}"
           git remote add fork "https://github.com/${FORK}/umbrel-apps.git"
-          if git fetch -q --depth=1 fork "${BRANCH}" 2>/dev/null \
-             && git diff --quiet FETCH_HEAD HEAD -- "${APP_ID}"; then
-            echo "Fork branch ${FORK}:${BRANCH} already has this content; nothing to push."
-            echo "pushed=false" >> "$GITHUB_OUTPUT"; exit 0
+          if git fetch -q --depth=1 fork "${BRANCH}" 2>/dev/null; then
+            # Move HEAD + index onto the fork branch. The working tree keeps the
+            # finished package; re-stage only APP_ID/ from it.
+            git reset -q FETCH_HEAD
+            git add -A -- "${APP_ID}"
+            if git diff --cached --quiet; then
+              echo "Fork branch ${FORK}:${BRANCH} already has this content; nothing to push."
+              echo "pushed=false" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+          elif [ -n "${EXISTING_REF}" ]; then
+            echo "::error::Could not fetch ${FORK}:${BRANCH}, the head of the open PR on ${UMBREL_APPS}. Not pushing, so the PR is left as it is. Re-run later."
+            exit 1
           fi
-          git push -q --force fork "HEAD:refs/heads/${BRANCH}"
+          git commit -q -m "${APP_ID}: update to ${T}"
+          # No --force: an existing branch only ever fast-forwards.
+          if ! OUT="$(git push -q fork "HEAD:refs/heads/${BRANCH}" 2>&1)"; then
+            printf '%s\n' "${OUT}"
+            if grep -q 'refusing to allow .*workflow' <<< "${OUT}"; then
+              echo "::error::GitHub refused the push: this new branch starts from today's ${UMBREL_APPS}:${UMBREL_BASE}, which has edits to .github/workflows/ that ${FORK}/umbrel-apps does not have yet, and forwarding those needs the 'workflow' scope. Permanent fix: open the classic token behind UMBREL_APPS_TOKEN at https://github.com/settings/tokens, tick 'workflow', click 'Update token' (the token value stays the same, so the secret needs no change). One-off alternative: click 'Sync fork' on https://github.com/${FORK}/umbrel-apps. Then re-run this workflow."
+            fi
+            exit 1
+          fi
           echo "Pushed ${APP_ID} ${T} to ${FORK}:${BRANCH}."
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 
